@@ -30,7 +30,7 @@
   },
   "include": [
     "src"
-, "babel.config.js"  ],
+, "babel.config.js", "src/pages/admin/product/components/.tsx"  ],
   "references": [
     {
       "path": "./tsconfig.node.json"

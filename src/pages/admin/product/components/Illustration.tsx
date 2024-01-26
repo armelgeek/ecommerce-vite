@@ -5,16 +5,17 @@ const Illustration = () => {
   const uploadRef = useRef();
   return (
     <>
-        <UploadFile
-          name={'upload'}
-          type={"multiple"}
-          label={'Product image'}
-          index={1}
-          uploadText={'Upload Images'}
-          deleteText={'Retirer'}
-          changeValue={(v: any) => console.log('value', v)}
-          ref={uploadRef}
-        />
+      <label className='text-primary-700 font-medium' htmlFor="upload">Illustration du produit</label>
+      <UploadFile
+        name={'upload'}
+        type={"multiple"}
+        label={'Product image'}
+        index={1}
+        uploadText={'Upload Images'}
+        deleteText={'Retirer'}
+        changeValue={(v: any) => console.log('value', v)}
+        ref={uploadRef}
+      />
     </>
   )
 }

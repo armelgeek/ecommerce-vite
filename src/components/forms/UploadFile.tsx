@@ -59,7 +59,7 @@ const UploadFile = forwardRef(
             }));
         };
         return (
-            <div className='flex  flex-row items-center w-full'>
+            <div className='flex  flex-row items-center border border-slate-300 justify-center w-full'>
                 {type == 'single' ? (
                     <>
                         <div className='my-2'>

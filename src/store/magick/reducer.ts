@@ -1,3 +1,5 @@
+import { possibilityOptions } from "../../utils/cartesien";
+
 const defaultState = {
   meta: {
     isLoading: false,
@@ -7,170 +9,324 @@ const defaultState = {
     totalItems: 0,
     currentPage: 0,
   },
+
   items: [],
   selected: {},
 };
-export const deduplicationList = (list:any) => {
+export const deduplicationList = (list: any) => {
   const ids = new Set();
-  return list.filter((s:any) => {
+  return list.filter((s: any) => {
     if (ids.has(s.id)) return false;
     ids.add(s.id);
     return true;
   });
 };
 
-export const addItem = ({ state, payload }:any) => [...state, payload];
-export const addItems = ({ state, payload }:any) => [...state, ...payload];
-export const insertItem = (data:any, { index, item }:any) => [
+export const addItem = ({ state, payload }: any) => [...state, payload];
+export const addItems = ({ state, payload }: any) => [...state, ...payload];
+export const insertItem = (data: any, { index, item }: any) => [
   ...data.slice(0, index),
   item,
   ...data.slice(index),
 ];
 
-export const insertItemAfterIndex = (data:any, { index, item }:any) => [
+export const insertItemAfterIndex = (data: any, { index, item }: any) => [
   ...data.slice(0, index),
   item,
   ...data.slice(index),
 ];
 
-const removeItem = (data:any, index:number) => [
+export const removeItem = (data: any, index: number) => [
   ...data.slice(0, index),
   ...data.slice(index + 1),
 ];
-const removeItemsByKey = (data:any, { items, key }:any) => {
-  const keys = items.map((item:any) => item[key]);
-  return data.filter((item:any) => !keys.includes(item[key]));
+const removeItemsByKey = (data: any, { items, key }: any) => {
+  const keys = items.map((item: any) => item[key]);
+  return data.filter((item: any) => !keys.includes(item[key]));
 };
 
-const updateItem = (data:any, { index, item }:any) =>
-  data.map((curItem:any, curIndex:any) => {
+const updateItem = (data: any, { index, item }: any) =>
+  data.map((curItem: any, curIndex: any) => {
     if (curIndex !== index) return curItem;
     return { ...curItem, ...item };
   });
 
-const updateItemByKey = (data:any, { item, key }:any) =>
-  data.map((curItem:any) => {
+const updateItemByKey = (data: any, { item, key }: any) =>
+  data.map((curItem: any) => {
     if (curItem[key] !== item[key]) return curItem;
     return { ...curItem, ...item };
   });
-const updateItemsByKey = (data:any, { items, key }:any) =>
-  data.map((curItem:any) => {
-    const item = items.find((it:any) => curItem[key] === it[key]);
+const updateItemsByKey = (data: any, { items, key }: any) =>
+  data.map((curItem: any) => {
+    const item = items.find((it: any) => curItem[key] === it[key]);
     if (!item) return curItem;
 
     return { ...curItem, ...item };
   });
-const updateValueAllItems = (data:any, payload:any) =>
-  data.map((curItem:any) => ({ ...curItem, ...payload }));
-export const mergeReducers = (moduleName:any, initialState:any, mutations:any) => {
+const updateValueAllItems = (data: any, payload: any) =>
+  data.map((curItem: any) => ({ ...curItem, ...payload }));
+export const mergeReducers = (moduleName: any, initialState: any, mutations: any) => {
   const defaultReducers = {
-    [`${moduleName}__loading`](state:any, isLoading:any) {
+    [`${moduleName}__loading`](state: any, isLoading: any) {
       state = { ...state };
       state.meta.isLoading = isLoading;
       return state;
     },
-    [`${moduleName}__item__info`](state:any, { prop, value }:any) {
+    [`${moduleName}__item__info`](state: any, { prop, value }: any) {
       return {
         ...state,
         [prop]: value,
       };
     },
-    [`${moduleName}__add__item`](state:any, payload:any) {
+
+    [`${moduleName}__item__infos`](state: any, updates: any) {
+      console.log('update', state);
+      const updateNested = (currentState: any, keys: any, value: any) => {
+
+        const key = keys.shift();
+        const updatedState = { ...currentState };
+        if (keys.length === 0) {
+          updatedState[key] = value;
+        } else {
+          updatedState[key] = updateNested(
+            currentState[key] || {},
+            keys,
+            value
+          );
+        }
+
+        return updatedState;
+      };
+      const value = Object.keys(updates).reduce((acc, key) => {
+        const keys = key.split('.');
+        return updateNested(acc, keys, updates[key]);
+      }, { ...state });
+      return { ...state, ...value };
+    },
+    [`${moduleName}__add__item`](state: any, payload: any) {
       return {
         ...state,
         items: [payload, ...state.items],
       };
     },
-    [`${moduleName}__insert__item`](state:any, { index, item }:any) {
+    [`${moduleName}__insert__item`](state: any, { index, item }: any) {
       return {
         ...state,
         items: insertItem(state.items, { index, item }),
       };
     },
-    [`${moduleName}__add__items`](state:any, payload:any) {
+    [`${moduleName}__add__items`](state: any, payload: any) {
       return {
         ...state,
         items: [...payload, ...state.items],
       };
     },
-    [`${moduleName}__remove__item__by__index`](state:any, { index }:any) {
+    [`${moduleName}__add__item_to_prop`](state: any, { prop, value }: any) {
+      return {
+        ...state,
+        [prop]: [...state[prop], value],
+      };
+    },
+    [`${moduleName}__add__item_nested_to_prop`](state: any, { prop, value, index = undefined, childKey = '', valueIndex = undefined }: any) {
+      const updateNested = (currentState: any, keys: string[], index: number, childKey: string, value: any, valueIndex?: number) => {
+        const key: any = keys.shift();
+        const updatedState = { ...currentState };
+
+        if (keys.length === 0) {
+          if (Array.isArray(updatedState[key])) {
+            if (value.id !== undefined) {
+              const existingIndex = updatedState[key].findIndex((item: any) => item.id === value.id);
+              if (existingIndex !== -1) {
+                updatedState[key][existingIndex] = { ...updatedState[key][existingIndex], ...value };
+              } else {
+                if (childKey === "") {
+                  if (valueIndex !== undefined) {
+                    updatedState[key][valueIndex] = value;
+                  } else if (index !== undefined) {
+                    updatedState[key].splice(index, 0, value);
+                  } else {
+                    updatedState[key].push(value);
+                  }
+                } else {
+                  updatedState[key][index][childKey].push(value);
+                }
+              }
+            } else {
+              if (childKey === "") {
+                if (valueIndex !== undefined) {
+                  updatedState[key][valueIndex] = value;
+                } else if (index !== undefined) {
+                  updatedState[key].splice(index, 0, value);
+                } else {
+                  updatedState[key].push(value);
+                }
+              } else {
+                if (valueIndex !== undefined) {
+                  updatedState[key][index][childKey][valueIndex] = value;
+                } else {
+                  updatedState[key][index][childKey].push(value);
+                }
+              }
+            }
+          } else {
+            updatedState[key] = [value];
+          }
+        } else {
+          updatedState[key] = updateNested(
+            currentState[key] || {},
+            keys,
+            index,
+            childKey,
+            value,
+            valueIndex
+          );
+        }
+        return updatedState;
+      };
+      const newState = updateNested(state, prop.split('.'), index, childKey, value, valueIndex);
+
+      let updatedValue = {
+        ...state,
+        ...newState,
+      };
+      if (prop.split('.').includes('variations')) {
+        console.log('leka','leka');
+        return updatedValue;
+      } else {
+        return {
+          ...updatedValue,
+          selected: {
+            ...updatedValue.selected,
+            variations: possibilityOptions(newState.selected.options)
+          }
+        };
+      }
+    },
+
+    [`${moduleName}__remove__item__by__index`](state: any, { index }: any) {
       return {
         ...state,
         items: removeItem(state.items, index),
       };
     },
-    [`${moduleName}__remove__item__by__key`](state:any, { item, key }:any) {
+    [`${moduleName}__remove__item__by__key`](state: any, { item, key }: any) {
       const index = state.items.findIndex(
-        (curItem:any) => curItem[key] === item[key]
+        (curItem: any) => curItem[key] === item[key]
       );
       return index > -1
         ? {
-            ...state,
-            items: removeItem(state.items, index),
-          }
+          ...state,
+          items: removeItem(state.items, index),
+        }
         : state;
     },
-    [`${moduleName}__remove__items__by__key`](state:any, { items, key }:any) {
+    [`${moduleName}__remove__items__by__key`](state: any, { items, key }: any) {
       return {
         ...state,
         items: removeItemsByKey(state.items, { items, key }),
       };
     },
-    [`${moduleName}__update_item`](state:any, { index, item }:any) {
+    [`${moduleName}__remove__items__nested`](state: any, { prop, optionIndex = undefined, childKey = '', valueIndex }: any) {
+      const deleteNested = (currentState: any, keys: string[], optionIndex: number, childKey?: string, valueIndex?: number) => {
+        const key: any = keys.shift();
+        const updatedState = { ...currentState };
+
+        if (keys.length === 0) {
+          if (Array.isArray(updatedState[key])) {
+            if (childKey !== undefined && childKey !== "") {
+              if (valueIndex !== undefined) {
+                if (updatedState[key][optionIndex] && Array.isArray(updatedState[key][optionIndex][childKey])) {
+                  updatedState[key][optionIndex][childKey].splice(valueIndex, 1);
+                }
+              } else {
+                if (updatedState[key][optionIndex] && Array.isArray(updatedState[key][optionIndex][childKey])) {
+                  updatedState[key][optionIndex][childKey] = [];
+                }
+              }
+            } else {
+              updatedState[key].splice(optionIndex, 1);
+            }
+          }
+        } else {
+          updatedState[key] = deleteNested(
+            currentState[key] || {},
+            keys,
+            optionIndex,
+            childKey,
+            valueIndex
+          );
+        }
+        return updatedState;
+      };
+     
+      const newState = deleteNested(state, prop.split('.'), optionIndex, childKey, valueIndex);
+      let updatedValue = {
+        ...state,
+        ...newState,
+      };
+      if (prop.split('.').includes('variations')) {
+        return updatedValue
+      } else {
+        return {
+          ...updatedValue,
+          selected: {
+            ...updatedValue.selected,
+            variations: possibilityOptions(newState.selected.options)
+          }
+        };
+      }
+
+
+    },
+    [`${moduleName}__update_item`](state: any, { index, item }: any) {
       return {
         ...state,
         items: updateItem(state.items, { index, item }),
       };
     },
-    [`${moduleName}__update_item_by_key`](state:any, { key, item }:any) {
+    [`${moduleName}__update_item_by_key`](state: any, { key, item }: any) {
       return {
         ...state,
         items: updateItemByKey(state.items, { key, item }),
       };
     },
-    [`${moduleName}__update_items_by_key`](state:any, { key, items }:any) {
+    [`${moduleName}__update_items_by_key`](state: any, { key, items }: any) {
       return {
         ...state,
         items: updateItemsByKey(state.items, { key, items }),
       };
     },
-    [`${moduleName}__update_value_all_items`](state:any, payload:any) {
+    [`${moduleName}__update_value_all_items`](state: any, payload: any) {
       return {
         ...state,
         items: updateValueAllItems(state.items, payload),
       };
     },
-    [`${moduleName}__fetch_items`](state:any, payload:any) {
+    [`${moduleName}__fetch_items`](state: any, payload: any) {
       return {
         ...state,
-        items: deduplicationList([...payload.rows]),
-        meta: {
-          ...state.meta,
-          totalPages: payload.totalPages,
-          totalItems: payload.totalItems,
-          currentPage: payload.currentPage,
-        }
+        items: deduplicationList([...payload]),
       };
     },
-    [`${moduleName}__selected_item`](state:any, payload:any) {
+    [`${moduleName}__selected_item`](state: any, payload: any) {
       return {
         ...state,
         selected: payload,
       };
     },
-    [`${moduleName}__error`](state:any, payload:any) {
+    [`${moduleName}__error`](state: any, payload: any) {
       state = { ...state };
       state.meta.error = payload;
       return state;
     },
-    [`${moduleName}__success`](state:any, payload:any) {
+    [`${moduleName}__success`](state: any, payload: any) {
       state = { ...state };
       state.meta.success = payload;
       return state;
     },
   };
   mutations = { ...mutations, ...defaultReducers };
-  const reducer = (state = { ...initialState, ...defaultState }, action:any) =>
+  const reducer = (state = { ...initialState, ...defaultState }, action: any) =>
     mutations[action.type]
       ? mutations[action.type](state, action.payload)
       : state;
